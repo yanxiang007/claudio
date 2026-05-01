@@ -9,7 +9,7 @@ import { PlayQueue } from './play-queue.js';
 import { WeatherClient } from './adapters/weather.js';
 import { NeteaseClient } from './adapters/netease.js';
 import { FishAudioClient } from './adapters/fish-audio.js';
-import { DJBrain } from './adapters/claude.js';
+import { createDJBrain } from './adapters/dj-brain.js';
 import { ContextBuilder } from './context-builder.js';
 import { EventBus } from './event-bus.js';
 import { Orchestrator } from './orchestrator.js';
@@ -27,7 +27,7 @@ async function main() {
   const weather = new WeatherClient(config.openWeatherKey, config.city);
   const music = new NeteaseClient(config.netease.clientId, config.netease.clientSecret, config.netease.refreshToken);
   const tts = new FishAudioClient(config.fishAudio.apiKey, config.fishAudio.voiceId, config.audioCacheDir);
-  const brain = new DJBrain(config.anthropicKey);
+  const brain = await createDJBrain(config.llm);
   const context = new ContextBuilder(profile, weather, djMemory);
   const bus = new EventBus();
   const orch = new Orchestrator(queue, context, brain, music, tts, profile, djMemory, bus);

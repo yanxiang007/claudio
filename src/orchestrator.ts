@@ -1,7 +1,7 @@
 import type { Track } from './types.js';
 import type { PlayQueue } from './play-queue.js';
 import type { ContextBuilder } from './context-builder.js';
-import type { DJBrain } from './adapters/claude.js';
+import type { DJBrain } from './adapters/dj-brain.js';
 import type { MusicSource } from './adapters/netease.js';
 import type { FishAudioClient } from './adapters/fish-audio.js';
 import type { UserProfileStore } from './storage/user-profile.js';

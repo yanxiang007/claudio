@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { parseDecision, parseChat } from '../src/adapters/claude.js';
+import { parseDecision, parseChat } from '../src/adapters/dj-brain.js';
 
 describe('parseDecision', () => {
   it('parses well-formed JSON', () => {

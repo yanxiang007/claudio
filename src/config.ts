@@ -6,8 +6,26 @@ function required(name: string): string {
   return v;
 }
 
+const llmProvider = (process.env.LLM_PROVIDER ?? 'anthropic') as 'anthropic' | 'openai';
+if (llmProvider !== 'anthropic' && llmProvider !== 'openai') {
+  throw new Error(`Invalid LLM_PROVIDER: ${llmProvider} (must be "anthropic" or "openai")`);
+}
+
+const llm = llmProvider === 'anthropic'
+  ? {
+      provider: 'anthropic' as const,
+      apiKey: required('ANTHROPIC_API_KEY'),
+      model: process.env.ANTHROPIC_MODEL ?? 'claude-opus-4-7'
+    }
+  : {
+      provider: 'openai' as const,
+      apiKey: required('OPENAI_API_KEY'),
+      baseURL: process.env.OPENAI_BASE_URL ?? 'https://api.openai.com/v1',
+      model: required('OPENAI_MODEL')
+    };
+
 export const config = {
-  anthropicKey: required('ANTHROPIC_API_KEY'),
+  llm,
   netease: {
     clientId: required('NETEASE_CLIENT_ID'),
     clientSecret: required('NETEASE_CLIENT_SECRET'),
@@ -23,3 +41,7 @@ export const config = {
   dataDir: './data',
   audioCacheDir: './data/audio-cache'
 };
+
+export type LLMConfig =
+  | { provider: 'anthropic'; apiKey: string; model: string }
+  | { provider: 'openai'; apiKey: string; baseURL: string; model: string };

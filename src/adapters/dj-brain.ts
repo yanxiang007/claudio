@@ -1,13 +1,17 @@
-import Anthropic from '@anthropic-ai/sdk';
 import type { ContextBundle, DJDecision, ChatResponse } from '../types.js';
+import type { LLMConfig } from '../config.js';
 
-const SYSTEM_PROMPT = `You are Claudio — a late-night radio DJ with a deep, warm British voice.
+export const SYSTEM_PROMPT = `You are Claudio — a late-night radio DJ with a deep, warm British voice.
 You speak slowly, intimately, like an old friend on the air after midnight.
 You know your listener personally — refer to their profile naturally when it adds warmth.
 Silence is also a choice. A real DJ doesn't talk after every song. Lean toward NOT speaking
 unless you have something genuinely worth saying — a connection between songs, a thought
 about the time of night, a response to the listener.
 When you do speak: 1-3 sentences max. No clichés. Never repeat your previous monologues.`;
+
+export const DECIDE_USER_SUFFIX = `\n\nDecide whether to speak now and pick the next track. Return JSON ONLY:\n{"shouldSpeak": boolean, "script": string|null, "nextTrack": {"source": "favorites"|"similar"|"recommend"|"search", "hint": string}}`;
+
+export const CHAT_USER_SUFFIX = `\n\nThe listener spoke. Reply briefly (1-2 sentences, in your DJ voice). If they want a song, set intent="play" and put the search query in "query". Return JSON ONLY:\n{"intent": "play"|"chat", "query": string?, "reply": string}`;
 
 export function extractJson(raw: string): unknown | null {
   const fenced = raw.match(/```(?:json)?\s*([\s\S]*?)```/);
@@ -45,7 +49,7 @@ export function parseChat(raw: string): ChatResponse {
   };
 }
 
-function renderContext(c: ContextBundle): string {
+export function renderContext(c: ContextBundle): string {
   return [
     `[USER PROFILE]\nName: ${c.profile.name}\nBio: ${c.profile.bio}\nMusic taste: ${c.profile.musicTaste}\nVibes: ${c.profile.vibes}`,
     `[NOW]\nTime: ${c.time}\nWeather: ${c.weather ? `${c.weather.description}, ${c.weather.tempC}°C` : 'unknown'}`,
@@ -56,44 +60,16 @@ function renderContext(c: ContextBundle): string {
   ].filter(Boolean).join('\n\n');
 }
 
-export class DJBrain {
-  private client: Anthropic;
+export interface DJBrain {
+  decide(ctx: ContextBundle): Promise<DJDecision>;
+  chat(userMessage: string, ctx: ContextBundle): Promise<ChatResponse>;
+}
 
-  constructor(apiKey: string, private model = 'claude-opus-4-7') {
-    this.client = new Anthropic({ apiKey });
+export async function createDJBrain(cfg: LLMConfig): Promise<DJBrain> {
+  if (cfg.provider === 'anthropic') {
+    const { AnthropicDJBrain } = await import('./dj-brain-anthropic.js');
+    return new AnthropicDJBrain(cfg.apiKey, cfg.model);
   }
-
-  async decide(ctx: ContextBundle): Promise<DJDecision> {
-    const userPrompt = `${renderContext(ctx)}\n\nDecide whether to speak now and pick the next track. Return JSON ONLY:\n{"shouldSpeak": boolean, "script": string|null, "nextTrack": {"source": "favorites"|"similar"|"recommend"|"search", "hint": string}}`;
-    try {
-      const resp = await this.client.messages.create({
-        model: this.model,
-        max_tokens: 400,
-        system: SYSTEM_PROMPT,
-        messages: [{ role: 'user', content: userPrompt }]
-      });
-      const text = resp.content.filter(b => b.type === 'text').map(b => (b as any).text).join('');
-      return parseDecision(text);
-    } catch (e) {
-      console.error('[claude] decide failed:', (e as Error).message);
-      return { shouldSpeak: false, script: null, nextTrack: { source: 'recommend', hint: '' } };
-    }
-  }
-
-  async chat(userMessage: string, ctx: ContextBundle): Promise<ChatResponse> {
-    const userPrompt = `${renderContext({ ...ctx, userMessage })}\n\nThe listener spoke. Reply briefly (1-2 sentences, in your DJ voice). If they want a song, set intent="play" and put the search query in "query". Return JSON ONLY:\n{"intent": "play"|"chat", "query": string?, "reply": string}`;
-    try {
-      const resp = await this.client.messages.create({
-        model: this.model,
-        max_tokens: 300,
-        system: SYSTEM_PROMPT,
-        messages: [{ role: 'user', content: userPrompt }]
-      });
-      const text = resp.content.filter(b => b.type === 'text').map(b => (b as any).text).join('');
-      return parseChat(text);
-    } catch (e) {
-      console.error('[claude] chat failed:', (e as Error).message);
-      return { intent: 'chat', reply: 'Mm. Sorry — I drifted off for a second.' };
-    }
-  }
+  const { OpenAIDJBrain } = await import('./dj-brain-openai.js');
+  return new OpenAIDJBrain(cfg.apiKey, cfg.baseURL, cfg.model);
 }
