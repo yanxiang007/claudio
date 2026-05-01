@@ -36,7 +36,16 @@ export class FishAudioClient {
       await writeFile(filePath, Buffer.from(data));
       return { audioUrl, filePath };
     } catch (e) {
-      console.error('[fish-audio] synthesize failed:', (e as Error).message);
+      const err = e as any;
+      const status = err?.response?.status;
+      const body = err?.response?.data;
+      let bodyStr = '';
+      if (body) {
+        try {
+          bodyStr = Buffer.isBuffer(body) ? body.toString('utf8') : JSON.stringify(body);
+        } catch { bodyStr = String(body); }
+      }
+      console.error(`[fish-audio] synthesize failed: status=${status ?? 'n/a'} message="${err?.message ?? ''}" body=${bodyStr}`);
       return null;
     }
   }

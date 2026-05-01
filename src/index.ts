@@ -2,6 +2,7 @@ import Fastify from 'fastify';
 import fastifyStatic from '@fastify/static';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
+import { mkdirSync } from 'node:fs';
 import { config } from './config.js';
 import { UserProfileStore } from './storage/user-profile.js';
 import { DJMemoryStore } from './storage/dj-memory.js';
@@ -21,6 +22,8 @@ import { eventsRoute } from './routes/events.js';
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
 async function main() {
+  mkdirSync(config.audioCacheDir, { recursive: true });
+
   const profile = new UserProfileStore(config.dataDir);
   const djMemory = new DJMemoryStore(config.dataDir);
   const queue = new PlayQueue();
