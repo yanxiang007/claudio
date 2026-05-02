@@ -21,7 +21,8 @@ const llm = llmProvider === 'anthropic'
       provider: 'openai' as const,
       apiKey: required('OPENAI_API_KEY'),
       baseURL: process.env.OPENAI_BASE_URL ?? 'https://api.openai.com/v1',
-      model: required('OPENAI_MODEL')
+      model: required('OPENAI_MODEL'),
+      webSearch: (process.env.OPENAI_WEB_SEARCH ?? 'false').toLowerCase() === 'true'
     };
 
 const neteaseBackend = (process.env.NETEASE_BACKEND ?? 'unofficial') as 'cli' | 'openapi' | 'unofficial';
@@ -69,4 +70,4 @@ export const config = {
 
 export type LLMConfig =
   | { provider: 'anthropic'; apiKey: string; model: string }
-  | { provider: 'openai'; apiKey: string; baseURL: string; model: string };
+  | { provider: 'openai'; apiKey: string; baseURL: string; model: string; webSearch: boolean };

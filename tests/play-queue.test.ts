@@ -25,11 +25,12 @@ describe('PlayQueue', () => {
     expect(q.advance()).toBeNull();
   });
 
-  it('playNow inserts at head and advances immediately', () => {
+  it('playNow replaces the current track without replaying it next', () => {
     const q = new PlayQueue();
     q.enqueue(t('1'));
+    q.advance();
     q.playNow(t('99'));
     expect(q.current()?.id).toBe('99');
-    expect(q.advance()?.id).toBe('1');
+    expect(q.advance()).toBeNull();
   });
 });

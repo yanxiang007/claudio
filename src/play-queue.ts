@@ -16,7 +16,6 @@ export class PlayQueue {
   }
 
   playNow(t: Track): void {
-    if (this.currentTrack) this.queue.unshift(this.currentTrack);
     this.currentTrack = t;
   }
 

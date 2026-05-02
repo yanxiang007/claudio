@@ -2,6 +2,7 @@ import axios from 'axios';
 import { createHash } from 'node:crypto';
 import { writeFile, mkdir, access } from 'node:fs/promises';
 import { join } from 'node:path';
+import { sanitizeSpokenText } from './dj-brain.js';
 
 export class FishAudioClient {
   constructor(
@@ -16,7 +17,10 @@ export class FishAudioClient {
   }
 
   async synthesize(text: string): Promise<{ audioUrl: string; filePath: string } | null> {
-    const id = this.hash(text);
+    const spoken = sanitizeSpokenText(text);
+    if (!spoken) return null;
+
+    const id = this.hash(spoken);
     const fileName = `${id}.mp3`;
     const filePath = join(this.cacheDir, fileName);
     const audioUrl = `/audio-cache/${fileName}`;
@@ -27,7 +31,7 @@ export class FishAudioClient {
       await mkdir(this.cacheDir, { recursive: true });
       const { data } = await axios.post(
         'https://api.fish.audio/v1/tts',
-        { text, reference_id: this.voiceId, format: 'mp3' },
+        { text: spoken, reference_id: this.voiceId, format: 'mp3' },
         {
           headers: {
             Authorization: `Bearer ${this.apiKey}`,

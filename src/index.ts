@@ -6,6 +6,7 @@ import { mkdirSync } from 'node:fs';
 import { config } from './config.js';
 import { UserProfileStore } from './storage/user-profile.js';
 import { DJMemoryStore } from './storage/dj-memory.js';
+import { SessionLogStore } from './storage/session-log.js';
 import { NeteaseTokenStore } from './storage/netease-tokens.js';
 import { PlayQueue } from './play-queue.js';
 import { WeatherClient } from './adapters/weather.js';
@@ -34,6 +35,7 @@ async function main() {
 
   const profile = new UserProfileStore(config.dataDir);
   const djMemory = new DJMemoryStore(config.dataDir);
+  const sessionLog = new SessionLogStore(join(config.dataDir, 'sessions'));
   const queue = new PlayQueue();
   const weather = new WeatherClient(config.openWeatherKey, config.city);
 
@@ -77,7 +79,15 @@ async function main() {
   const brain = await createDJBrain(config.llm);
   const context = new ContextBuilder(profile, weather, djMemory);
   const bus = new EventBus();
-  const orch = new Orchestrator(queue, context, brain, music, tts, profile, djMemory, bus);
+  await sessionLog.record({
+    type: 'session-started',
+    payload: {
+      llmProvider: config.llm.provider,
+      neteaseBackend: config.netease.backend,
+      city: config.city
+    }
+  });
+  const orch = new Orchestrator(queue, context, brain, music, tts, profile, djMemory, bus, sessionLog);
 
   const app = Fastify({ logger: true });
 

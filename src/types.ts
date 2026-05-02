@@ -46,6 +46,7 @@ export interface ChatResponse {
   intent: 'play' | 'chat';
   reply: string;
   query?: string;
+  count?: number;
 }
 
 export type SSEEvent =
