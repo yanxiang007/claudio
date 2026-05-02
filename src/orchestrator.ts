@@ -22,7 +22,16 @@ export class Orchestrator {
 
   async start(): Promise<void> {
     if (this.queue.current()) return;
-    const track = await this.pickTrack({ source: 'recommend', hint: '' }, null);
+    const ctx = await this.context.build({ lastTrack: null });
+    const decision = await this.brain.decide(ctx);
+
+    if (decision.shouldSpeak && decision.script) {
+      const tts = await this.tts.synthesize(decision.script);
+      this.bus.emit({ type: 'dj-speaking', audioUrl: tts?.audioUrl ?? null, text: decision.script });
+      await this.djMemory.record(decision.script);
+    }
+
+    const track = await this.pickTrack(decision.nextTrack, null);
     if (track) {
       this.queue.enqueue(track);
       this.queue.advance();
@@ -95,6 +104,9 @@ export class Orchestrator {
       case 'favorites': tries.push(() => this.profile.favorites().then(fs => fs.map(f => ({ id: f.trackId, title: f.title, artist: f.artist, url: '', durationMs: 0, source: 'netease' as const })))); break;
       case 'similar': if (last && last.source === 'netease') tries.push(() => this.music.similar(last.id)); break;
       case 'search': if (hint.hint) tries.push(() => this.music.search(hint.hint)); break;
+    }
+    if (hint.source !== 'search' && hint.hint) {
+      tries.push(() => this.music.search(hint.hint));
     }
     tries.push(() => this.music.recommend());
 

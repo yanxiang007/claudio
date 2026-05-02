@@ -1,5 +1,6 @@
-import axios, { AxiosInstance } from 'axios';
 import type { Track } from '../types.js';
+import type { NeteaseSigner } from './netease-sign.js';
+import type { NeteaseAuth } from './netease-auth.js';
 
 export interface MusicSource {
   search(query: string, limit?: number): Promise<Track[]>;
@@ -9,78 +10,77 @@ export interface MusicSource {
   favorites(limit?: number): Promise<Track[]>;
 }
 
+const DAILY_RECOMMEND = '/openapi/music/basic/recommend/songlist/get/v2';
+const STYLE_RECOMMEND = '/openapi/music/basic/recommend/style/songlist/get';
+const SEARCH_SONG = '/openapi/music/basic/search/song/get/v3';
+const SIMILAR_SONG = '/openapi/music/song/simulation/get';
+const PLAY_URL = '/openapi/music/basic/song/playurl/get/v2';
+
+function isPlayable(raw: any): boolean {
+  if (raw.visible === false) return false;
+  if (raw.playFlag === false) return false;
+  if (raw.vipFlag || raw.vipPlayFlag) return false;
+  if (raw.payPlayFlag) return false;
+  return true;
+}
+
+function toTrack(raw: any): Track {
+  const artists = raw.artists?.length ? raw.artists : raw.fullArtists;
+  return {
+    id: String(raw.id),
+    title: raw.name ?? 'unknown',
+    artist: (artists ?? []).map((a: any) => a?.name).filter(Boolean).join(', ') || 'unknown',
+    url: '',
+    durationMs: raw.duration ?? 0,
+    source: 'netease'
+  };
+}
+
 export class NeteaseClient implements MusicSource {
-  private http: AxiosInstance;
-  private accessToken: string | null = null;
-  private tokenExpiresAt = 0;
+  constructor(private signer: NeteaseSigner, private auth: NeteaseAuth) {}
 
-  constructor(
-    private clientId: string,
-    private clientSecret: string,
-    private refreshToken: string,
-    baseURL = 'https://openapi.music.163.com'
-  ) {
-    this.http = axios.create({ baseURL, timeout: 10000 });
-  }
-
-  private async ensureToken(): Promise<string> {
-    if (this.accessToken && Date.now() < this.tokenExpiresAt - 60_000) return this.accessToken;
-    const { data } = await this.http.post('/oauth/token', {
-      grant_type: 'refresh_token',
-      client_id: this.clientId,
-      client_secret: this.clientSecret,
-      refresh_token: this.refreshToken
-    });
-    this.accessToken = data.access_token;
-    this.tokenExpiresAt = Date.now() + (data.expires_in ?? 3600) * 1000;
-    return this.accessToken!;
-  }
-
-  private async authedGet(path: string, params: Record<string, unknown> = {}) {
-    const token = await this.ensureToken();
-    const { data } = await this.http.get(path, { params, headers: { Authorization: `Bearer ${token}` } });
-    return data;
-  }
-
-  private toTrack(raw: any): Track {
-    return {
-      id: String(raw.id ?? raw.songId),
-      title: raw.name ?? raw.title ?? 'unknown',
-      artist: (raw.artists ?? raw.ar ?? []).map((a: any) => a.name).join(', ') || 'unknown',
-      url: '',
-      durationMs: raw.duration ?? raw.dt ?? 0,
-      source: 'netease'
-    };
+  private async call<T = any>(path: string, biz: Record<string, unknown>): Promise<T> {
+    const token = await this.auth.getToken();
+    return this.signer.request<T>(path, biz, token);
   }
 
   async search(query: string, limit = 10): Promise<Track[]> {
-    const data = await this.authedGet('/search', { keywords: query, type: 1, limit });
-    const songs = data?.result?.songs ?? [];
-    return songs.map((s: any) => this.toTrack(s));
+    const data = await this.call<any>(SEARCH_SONG, { keyword: query, limit, offset: 0 });
+    const records: any[] = data?.data?.records ?? [];
+    return records.filter(isPlayable).map(toTrack);
   }
 
   async getUrl(songId: string): Promise<string | null> {
     try {
-      const data = await this.authedGet('/song/url', { id: songId });
-      return data?.data?.[0]?.url ?? null;
-    } catch { return null; }
+      const data = await this.call<any>(PLAY_URL, { songId, bitrate: 320 });
+      if (data?.subCode && data.subCode !== '200') {
+        console.warn(`[netease] playurl ${songId} subCode=${data.subCode} ${data.message ?? ''}`);
+        return null;
+      }
+      return data?.data?.url ?? null;
+    } catch (e) {
+      console.error('[netease] getUrl failed:', (e as Error).message);
+      return null;
+    }
   }
 
-  async recommend(limit = 10): Promise<Track[]> {
-    const data = await this.authedGet('/recommend/songs', { limit });
-    const songs = data?.recommend ?? data?.dailySongs ?? [];
-    return songs.slice(0, limit).map((s: any) => this.toTrack(s));
+  async recommend(limit = 30): Promise<Track[]> {
+    const data = await this.call<any>(DAILY_RECOMMEND, { limit: Math.min(limit, 40) });
+    const list: any[] = Array.isArray(data?.data) ? data.data : [];
+    if (list.length) return list.filter(isPlayable).map(toTrack);
+    const styled = await this.call<any>(STYLE_RECOMMEND, { limit: Math.min(limit, 12) });
+    const styledList: any[] = styled?.data?.songListVos ?? [];
+    return styledList.filter(isPlayable).map(toTrack);
   }
 
   async similar(songId: string, limit = 10): Promise<Track[]> {
-    const data = await this.authedGet('/simi/song', { id: songId, limit });
-    const songs = data?.songs ?? [];
-    return songs.map((s: any) => this.toTrack(s));
+    const data = await this.call<any>(SIMILAR_SONG, { songId, limit: Math.min(limit, 30) });
+    const list: any[] = Array.isArray(data?.data) ? data.data : [];
+    return list.filter(isPlayable).map(toTrack);
   }
 
-  async favorites(limit = 50): Promise<Track[]> {
-    const data = await this.authedGet('/user/favorites', { limit });
-    const songs = data?.songs ?? [];
-    return songs.map((s: any) => this.toTrack(s));
+  async favorites(_limit = 50): Promise<Track[]> {
+    void _limit;
+    return [];
   }
 }

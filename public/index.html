@@ -8,30 +8,73 @@
   <link rel="stylesheet" href="/style.css" />
 </head>
 <body>
-  <header><h1>Claudio</h1><span id="on-air">● ON AIR</span></header>
+  <div class="shell">
+    <header class="topbar">
+      <a class="brand" href="/" aria-label="Claudio home">
+        <span class="avatar" aria-hidden="true">C</span>
+        <span class="wordmark">Claudio</span>
+      </a>
+      <nav class="top-actions" aria-label="Session controls">
+        <button class="ghost-button" type="button">Login</button>
+        <div class="theme-toggle" aria-label="Theme">
+          <button class="is-active" type="button" data-theme-choice="dark">Dark</button>
+          <button type="button" data-theme-choice="light">Light</button>
+        </div>
+      </nav>
+    </header>
 
-  <main>
-    <section id="now-playing">
-      <div id="track-title">—</div>
-      <div id="track-artist"></div>
-      <progress id="progress" value="0" max="1"></progress>
-      <div class="controls">
-        <button id="play-pause">Play</button>
-        <button id="skip">Skip</button>
-        <button id="like">♡ Like</button>
-      </div>
-    </section>
+    <main class="studio">
+      <section class="hero-panel" aria-labelledby="clock-label">
+        <div class="pixel-grid" aria-hidden="true"></div>
+        <div class="clock-stack">
+          <p id="clock-label" class="eyebrow">Current Session</p>
+          <time id="clock-time" class="clock-time">--:--</time>
+          <time id="clock-date" class="clock-date">Listening room</time>
+          <span id="on-air" class="on-air">● ON AIR</span>
+        </div>
+      </section>
 
-    <section id="dj-bubble" hidden>
-      <div class="who">Claudio</div>
-      <div id="dj-text"></div>
-    </section>
+      <section id="now-playing" class="player-panel" aria-label="Now playing">
+        <div class="equalizer" aria-hidden="true">
+          <span></span><span></span><span></span><span></span><span></span>
+        </div>
+        <div class="track-copy">
+          <p class="eyebrow">Now Playing</p>
+          <div id="track-title">Waiting for signal</div>
+          <div id="track-artist">Claudio is tuning the room</div>
+        </div>
+        <div class="controls" aria-label="Playback controls">
+          <button id="play-pause" type="button" aria-label="Play or pause">Play</button>
+          <button id="skip" type="button" aria-label="Skip track">Skip</button>
+          <button id="like" type="button" aria-label="Like track">♡</button>
+        </div>
+        <div class="progress-wrap" aria-label="Track progress">
+          <span id="elapsed-time">0:00</span>
+          <progress id="progress" value="0" max="1"></progress>
+          <span id="duration-time">Live</span>
+        </div>
+      </section>
 
-    <section id="chat">
-      <input id="chat-input" placeholder="Say something to the DJ…" />
-      <button id="chat-send">Send</button>
-    </section>
-  </main>
+      <section class="queue-strip" aria-label="Queue status">
+        <span>Queue</span>
+        <strong>Live radio handoff</strong>
+        <span>0 tracks</span>
+      </section>
+
+      <section class="conversation-panel" aria-label="DJ transcript">
+        <div class="signal-row">
+          <span class="live-dot"></span>
+          <span>Connected to Claudio server</span>
+        </div>
+        <section id="transcript" aria-live="polite"></section>
+      </section>
+
+      <section id="chat" aria-label="Talk to Claudio">
+        <input id="chat-input" placeholder="Say something to the DJ..." autocomplete="off" />
+        <button id="chat-send" type="button" aria-label="Send message">↑</button>
+      </section>
+    </main>
+  </div>
 
   <audio id="music-audio"></audio>
   <audio id="dj-audio"></audio>
