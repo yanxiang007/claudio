@@ -29,7 +29,7 @@ async function main() {
   const queue = new PlayQueue();
   const weather = new WeatherClient(config.openWeatherKey, config.city);
   const music = new NeteaseClient(config.netease.clientId, config.netease.clientSecret, config.netease.refreshToken);
-  const tts = new FishAudioClient(config.fishAudio.apiKey, config.fishAudio.voiceId, config.audioCacheDir);
+  const tts = new FishAudioClient(config.fishAudio.apiKey, config.fishAudio.voiceId, config.audioCacheDir, config.fishAudio.model);
   const brain = await createDJBrain(config.llm);
   const context = new ContextBuilder(profile, weather, djMemory);
   const bus = new EventBus();

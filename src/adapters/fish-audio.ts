@@ -7,7 +7,8 @@ export class FishAudioClient {
   constructor(
     private apiKey: string,
     private voiceId: string,
-    private cacheDir: string
+    private cacheDir: string,
+    private model: string = 's2-pro'
   ) {}
 
   private hash(text: string): string {
@@ -28,7 +29,11 @@ export class FishAudioClient {
         'https://api.fish.audio/v1/tts',
         { text, reference_id: this.voiceId, format: 'mp3' },
         {
-          headers: { Authorization: `Bearer ${this.apiKey}`, 'Content-Type': 'application/json' },
+          headers: {
+            Authorization: `Bearer ${this.apiKey}`,
+            'Content-Type': 'application/json',
+            model: this.model
+          },
           responseType: 'arraybuffer',
           timeout: 30000
         }
@@ -45,7 +50,15 @@ export class FishAudioClient {
           bodyStr = Buffer.isBuffer(body) ? body.toString('utf8') : JSON.stringify(body);
         } catch { bodyStr = String(body); }
       }
-      console.error(`[fish-audio] synthesize failed: status=${status ?? 'n/a'} message="${err?.message ?? ''}" body=${bodyStr}`);
+      console.error('[fish-audio] synthesize failed:', {
+        name: err?.name,
+        code: err?.code,
+        message: err?.message,
+        status: status ?? null,
+        body: bodyStr || null,
+        cause: err?.cause?.message ?? err?.cause ?? null,
+        stack: err?.stack?.split('\n').slice(0, 3).join(' | ')
+      });
       return null;
     }
   }

@@ -33,7 +33,8 @@ export const config = {
   },
   fishAudio: {
     apiKey: required('FISH_AUDIO_API_KEY'),
-    voiceId: required('FISH_AUDIO_VOICE_ID')
+    voiceId: required('FISH_AUDIO_VOICE_ID'),
+    model: process.env.FISH_AUDIO_MODEL ?? 's2-pro'
   },
   openWeatherKey: process.env.OPENWEATHER_API_KEY ?? '',
   city: process.env.CITY ?? 'Hangzhou',
